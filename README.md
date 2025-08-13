@@ -53,7 +53,6 @@
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
-
     <!-- Tela de Boas-Vindas (Splash Screen) -->
     <section id="splash" class="h-screen flex flex-col justify-center items-center bg-white">
         <h1 class="text-6xl md:text-8xl font-bold gradient-text text-center">
@@ -63,7 +62,6 @@
             Começar
         </button>
     </section>
-
     <!-- Conteúdo Principal do Site (Inicialmente Oculto) -->
     <div id="main-content" class="hidden">
         <!-- Cabeçalho e Navegação -->
@@ -102,7 +100,6 @@
                 <a href="#projeto" class="block py-2 px-6 text-sm text-gray-600 hover:bg-indigo-50">O Projeto</a>
             </div>
         </header>
-
         <main>
             <!-- Seção dos Empreendedores -->
             <section id="empreendedores" class="py-20 bg-gray-50">
@@ -121,7 +118,6 @@
                                 Sabrinna projeta e implementa a arquitetura de segurança, protegendo nossos dados e infraestrutura na nuvem contra ameaças, garantindo conformidade e a integridade dos ativos digitais.
                             </p>
                         </div>
-
                         <!-- Card Emanuelle Christinie -->
                         <div class="bg-white rounded-xl shadow-lg p-8 text-center transform hover:-translate-y-2 transition duration-500">
                             <img class="w-32 h-32 rounded-full mx-auto mb-4 border-4 border-indigo-200" src="https://i.postimg.cc/LX6cZjCC/Emanuele.jpg" alt="Foto de Emanuelle Christinie">
@@ -131,7 +127,6 @@
                                Especialista em Inteligência Artificial, Emanuelle desenvolve algoritmos de machine learning e modelos preditivos para extrair insights e automatizar decisões complexas no sistema.
                             </p>
                         </div>
-
                         <!-- Card Renan Félix -->
                         <div class="bg-white rounded-xl shadow-lg p-8 text-center transform hover:-translate-y-2 transition duration-500">
                             <img class="w-32 h-32 rounded-full mx-auto mb-4 border-4 border-indigo-200" src="https://i.postimg.cc/507Z5jDx/Renan-felix.jpg" alt="Foto de Renan Félix">
@@ -144,7 +139,6 @@
                     </div>
                 </div>
             </section>
-
             <!-- Seção do Projeto Atualizada -->
             <section id="projeto" class="py-20 bg-white">
                 <div class="container mx-auto px-6">
@@ -152,7 +146,6 @@
                         <h2 class="text-3xl md:text-4xl font-bold text-gray-900">Nossa Arquitetura Tecnológica</h2>
                         <p class="text-md text-gray-600 mt-2">Entenda as camadas que impulsionam o nosso Mercado S.E.R.</p>
                     </div>
-
                     <!-- Etapa 1: A Base de Tudo -->
                     <div id="etapa1" class="pt-16 -mt-16">
                         <div class="flex flex-col md:flex-row items-center mb-20">
@@ -168,7 +161,6 @@
                             </div>
                         </div>
                     </div>
-
                     <!-- Etapa 2: A Inteligência da Operação -->
                     <div id="etapa2" class="pt-16 -mt-16">
                         <div class="flex flex-col md:flex-row-reverse items-center mb-20">
@@ -184,7 +176,6 @@
                             </div>
                         </div>
                     </div>
-
                     <!-- Etapa 3: Estrutura das Tabelas -->
                     <div id="etapa3" class="pt-16 -mt-16 mb-20">
                         <div class="text-center mb-10">
@@ -241,7 +232,6 @@
                                 <ul class="mt-2 text-gray-700 list-disc list-inside">
                                     <li><code>id_categoria</code> (PK)</li>
                                     <li><code>nome</code></li>
-                                    
                                 </ul>
                             </div>
                              <div class="bg-gray-100 p-6 rounded-lg shadow-inner">
@@ -255,7 +245,6 @@
                             </div>
                         </div>
                     </div>
-
                     <!-- Etapa 4: Carrossel Visual -->
                     <div id="etapa4" class="pt-16 -mt-16 text-center mb-20">
                         <span class="text-indigo-600 font-semibold">ETAPA 4</span>
@@ -274,7 +263,6 @@
                                     <h4 class="font-bold text-xl mb-4">Consulta SQL</h4>
                                     <img src="https://i.postimg.cc/mgPJRbcq/python-pra-sql.webp" class="rounded-md w-full" alt="Snippet de código SQL">
                                 </div>
-                                
                             </div>
                             <button id="prevBtn" class="absolute top-1/2 left-4 transform -translate-y-1/2 bg-white/50 hover:bg-white p-2 rounded-full shadow-md transition">
                                 &#10094;
@@ -284,7 +272,6 @@
                             </button>
                         </div>
                     </div>
-
                     <!-- Etapa 5: Funções em Python -->
                     <div id="etapa5" class="pt-16 -mt-16">
                         <div class="text-center mb-10">
@@ -303,16 +290,12 @@
                                     <p class="text-gray-600">Esta função é responsável por trazer informações, status, quantidade de produtos ou até quem comprou tal produto em que categoria, por exemplo. </p>
                                 </div>
                             </div>
-                            
                             </div>
-                            
                             </div>
                         </div>
                     </div>
-
                 </div>
             </section>
         </main>
-
         <!-- Rodapé -->
         <footer class="bg-gray-800 text-white py-8">
