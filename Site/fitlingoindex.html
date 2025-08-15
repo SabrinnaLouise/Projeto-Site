@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Duolingo Fit - Protótipo Funcional</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Nunito', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .app-container { height: 100vh; display: flex; flex-direction: column; }
+        .page { transition: opacity 0.3s ease-in-out; }
+        .hidden { display: none; }
+        .pulse-animation { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+            50% { transform: scale(1.05); box-shadow: 0 0 0 12px rgba(59, 130, 246, 0); }
+        }
+        .trail-path {
+            position: absolute; left: 50%; top: 0; bottom: 0; transform: translateX(-50%);
+            width: 4px; background-image: linear-gradient(to bottom, #e0e7ff 40%, transparent 60%);
+            background-size: 4px 10px; z-index: 0;
+        }
+        .dark .trail-path {
+             background-image: linear-gradient(to bottom, #374151 40%, transparent 60%);
+        }
+        .module-item { position: relative; z-index: 1; }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Tutorial Highlight */
+        .highlight-tutorial {
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.8), 0 0 0 9999px rgba(0,0,0,0.5);
+            border-radius: 12px;
+            position: relative;
+            z-index: 1000;
+            transition: box-shadow 0.3s ease-in-out;
+        }
+        
+        /* Tutorial Tooltip */
+        .tutorial-tooltip {
+            position: absolute;
+            background-color: white;
+            color: #333;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            z-index: 1001;
+            width: 250px;
+            text-align: center;
+        }
+        .dark .tutorial-tooltip {
+            background-color: #374151; /* gray-700 */
+            color: #f3f4f6; /* gray-100 */
+        }
+        
+        /* Toggle Switch Styles */
+        .toggle-checkbox:checked + .toggle-label { background-color: #34D399; }
+        .toggle-checkbox:checked + .toggle-label::after { transform: translateX(100%); border-color: #34D399; }
+    </style>
+</head>
+<body class="bg-gray-200 dark:bg-gray-900 flex justify-center items-center">
+
+    <div class="w-full max-w-sm h-full sm:h-[95vh] sm:max-h-[800px] mx-auto bg-white dark:bg-gray-800 shadow-2xl rounded-lg app-container">
+        
+        <header id="app-header" class="p-4 flex justify-between items-center border-b-2 border-gray-100 dark:border-gray-700 flex-shrink-0">
+            <h1 class="text-2xl font-black text-emerald-500" data-translatable>FitLingo</h1>
+            <div class="flex items-center space-x-4">
+                <div id="streak-indicator" class="flex items-center text-orange-500 font-extrabold text-lg">
+                    <i class="fas fa-fire-flame-curved mr-1"></i>
+                    <span id="streak-counter">0</span>
+                </div>
+                <div class="flex items-center text-red-500 font-extrabold text-lg">
+                    <i class="fas fa-heart mr-1"></i>
+                    <span>5</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-grow overflow-y-auto relative bg-gray-50 dark:bg-black/20">
+            <div id="page-container" class="relative">
+                <div id="page-home" class="page"></div>
+                <div id="page-nutrition" class="page hidden"></div>
+                <div id="page-leagues" class="page hidden"></div>
+                <div id="page-profile" class="page hidden"></div>
+            </div>
+            
+            <div id="locked-overlay" class="p-8 text-center flex flex-col justify-center items-center h-full">
+                <div class="w-24 h-24 flex items-center justify-center bg-gray-200 dark:bg-gray-700 rounded-full mb-4">
+                    <i class="fas fa-lock text-gray-400 dark:text-gray-500 text-5xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2" data-translatable>Desbloqueie sua jornada!</h2>
+                <p class="text-gray-600 dark:text-gray-400 mb-6" data-translatable>Responda ao quiz inicial para receber um plano de treinos e nutrição feito para você.</p>
+                <button id="start-quiz-btn" class="w-full bg-emerald-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:bg-emerald-600 transition-transform transform hover:scale-105 active:scale-100" data-translatable>
+                    Começar Meu Quiz
+                </button>
+            </div>
+        </main>
+
+        <footer class="w-full border-t-2 border-gray-100 dark:border-gray-700 flex-shrink-0">
+            <nav id="nav-bar" class="flex justify-around p-2">
+                <button data-tab="home" class="nav-btn text-blue-500 text-3xl flex flex-col items-center w-1/4 p-2 rounded-lg transition-transform transform active:scale-90">
+                    <i class="fas fa-dumbbell"></i><span class="text-xs font-bold" data-translatable>Início</span>
+                </button>
+                <button data-tab="nutrition" class="nav-btn text-gray-400 dark:text-gray-500 text-3xl flex flex-col items-center w-1/4 p-2 rounded-lg transition-transform transform active:scale-90">
+                    <i class="fas fa-utensils"></i><span class="text-xs font-bold" data-translatable>Nutrição</span>
+                </button>
+                <button data-tab="leagues" class="nav-btn text-gray-400 dark:text-gray-500 text-3xl flex flex-col items-center w-1/4 p-2 rounded-lg transition-transform transform active:scale-90">
+                    <i class="fas fa-shield-alt"></i><span class="text-xs font-bold" data-translatable>Ligas</span>
+                </button>
+                <button data-tab="profile" class="nav-btn text-gray-400 dark:text-gray-500 text-3xl flex flex-col items-center w-1/4 p-2 rounded-lg transition-transform transform active:scale-90">
+                    <i class="fas fa-user"></i><span class="text-xs font-bold" data-translatable>Perfil</span>
+                </button>
+            </nav>
+        </footer>
+
+        <!-- Modals -->
+        <div id="workout-modal" class="hidden absolute inset-0 bg-black bg-opacity-75 flex flex-col justify-center items-center p-8 z-50"></div>
+        <div id="recipe-modal" class="hidden absolute inset-0 bg-black bg-opacity-75 flex flex-col justify-center items-center p-4 z-50"></div>
+        <div id="quiz-modal" class="hidden absolute inset-0 bg-white dark:bg-gray-800 flex flex-col p-6 z-50"></div>
+        <div id="tutorial-overlay" class="hidden absolute inset-0 z-[999]"></div>
+        
+        <!-- Accessibility -->
+        <div id="accessibility-modal" class="hidden absolute bottom-40 right-4 w-48 bg-white dark:bg-gray-700 rounded-lg shadow-2xl p-3 text-center z-50 fade-in">
+            <p id="accessibility-caption" class="font-bold text-gray-800 dark:text-gray-200 mb-2"></p>
+            <img id="accessibility-gif" src="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExMTVzenVmcmdkNzE2YTl2eDZncmFuZ2k3OWpucmM4aTRtNHNzZ3B5aiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/2olOfzu75QM8vjgeUF/giphy.gif"/>
+        </div>
+        <button id="accessibility-btn" class="hidden absolute bottom-20 right-4 bg-blue-500 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-2xl z-40 transition-all duration-300">
+            <i class="fas fa-sign-language"></i>
+        </button>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // STATE: Manages all dynamic data of the application.
+    const state = {
+        isDarkMode: false,
+        isQuizCompleted: false,
+        isAccessibilityModeActive: false,
+        activeTab: 'home',
+        userGoal: 'perda-peso',
+        activeNutritionFilter: 'Todos',
+        nutritionSearchTerm: '',
+        activeLeagueTab: 'ranking',
+        activeProfilePage: 'main', // 'main', 'achievements', 'settings', 'guidelines', 'tutorial'
+        showTutorial: false,
+        tutorialStep: 0,
+        settings: {
+            sounds: true,
+            reminders: true,
+        },
+        quiz: {
+            currentQuestion: 0,
+            answers: {},
+        },
+        profile: {
+            username: '@ana.fit',
+            streak: 12,
+            totalWorkouts: 58,
+            healthPoints: 145000,
+            recipesViewed: 0,
+            chatMessagesSent: 0,
+        },
+        trail: [],
+        communityChat: [
+            { name: 'Carlos', msg: 'Terminei o desafio de 30 dias! Me sentindo ótimo!', avatar: 'https://i.postimg.cc/dtbWS8XW/homi.jpg', isUser: false },
+            { name: 'Fernanda', msg: 'Alguém tem uma boa receita de lanche pré-treino?', avatar: 'https://i.postimg.cc/jSy8VDYR/mulher-OB.jpg', isUser: false },
+        ]
+    };
+
+    // DB: A mock database for application content.
+    const db = {
+        trails: {
+            'perda-peso': [
+                { title: 'Aquecimento Dinâmico', duration: '5 min', icon: 'fa-person-running', description: 'Leve corrida no lugar para aquecer.' },
+                { title: 'HIIT: Queima Intensa', duration: '15 min', icon: 'fa-bolt', description: 'Ex: Polichinelos, Burpees, Agachamento com salto.' },
+                { title: 'Força: Circuito Metabólico', duration: '20 min', icon: 'fa-dumbbell', description: 'Ex: Flexões, Remada com peso corporal, Afundos.' },
+                { title: 'Cardio Contínuo', duration: '25 min', icon: 'fa-heart-pulse', description: 'Ritmo constante na bike ou elíptico.' },
+                { title: 'Relaxamento Final', duration: '5 min', icon: 'fa-hands-praying', description: 'Alongamentos estáticos para os principais músculos.' }
+            ],
+            'flexibilidade': [
+                { title: 'Mobilidade Articular', duration: '5 min', icon: 'fa-arrows-up-down-left-right', description: 'Ex: Rotação de ombros, pulsos, tornozelos e quadris.' },
+                { title: 'Yoga Flow: Saudação ao Sol', duration: '20 min', icon: 'fa-om', description: 'Sequência fluida de 12 posturas (Asanas).' },
+                { title: 'Alongamento Profundo', duration: '15 min', icon: 'fa-person-stretching', description: 'Foco em posteriores da coxa, quadríceps e panturrilhas.' },
+                { title: 'Liberação Miofascial', duration: '10 min', icon: 'fa-spa', description: 'Uso de rolo de espuma nos principais músculos.' },
+                { title: 'Meditação Guiada', duration: '5 min', icon: 'fa-brain', description: 'Foco na respiração diafragmática para relaxar.' }
+            ],
+            'saude-geral': [
+                { title: 'Caminhada Rápida', duration: '10 min', icon: 'fa-person-walking', description: 'Caminhada na esteira ou ao ar livre.' },
+                { title: 'Força Total Body', duration: '20 min', icon: 'fa-heart-pulse', description: 'Ex: Agachamento, Supino com halteres, Puxada na porta.' },
+                { title: 'Cardio Moderado', duration: '20 min', icon: 'fa-bicycle', description: 'Pedaladas em ritmo confortável e constante.' },
+                { title: 'Core e Equilíbrio', duration: '15 min', icon: 'fa-feather-pointed', description: 'Ex: Prancha frontal e lateral, Posição do avião.' },
+                { title: 'Alongamento Completo', duration: '5 min', icon: 'fa-hands-praying', description: 'Alongamentos suaves para todo o corpo.' }
+            ]
+        },
+        recipes: [
+            { title: 'Salada Caesar com Frango', category: 'Saladas', time: 30, calories: 350, img: 'https://i.postimg.cc/WzhvSMKN/Salada-Caesar-com-Frango.jpg', steps: ['Grelhe o filé de frango e corte em tiras.', 'Lave e seque as folhas de alface.', 'Em uma tigela, misture a alface, o frango e os croutons.', 'Prepare o molho Caesar e regue a salada antes de servir.'] },
+            { title: 'Sopa de Lentilha', category: 'Sopas', time: 45, calories: 250, img: 'https://i.postimg.cc/XJ2Ww2s1/Sopa-de-Lentilha-770x550-1.webp', steps: ['Refogue cebola e alho em uma panela.', 'Adicione a lentilha, água e temperos.', 'Cozinhe até a lentilha ficar macia.', 'Bata parte da sopa no liquidificador para uma textura cremosa e sirva.'] },
+            { title: 'Frango Grelhado com Brócolis', category: 'Prato Principal', time: 25, calories: 400, img: 'https://i.postimg.cc/nL0g5XqC/file-de-frango-grelhado-com-brocolis-1.jpg', steps: ['Tempere o filé de frango com sal, pimenta e ervas.', 'Grelhe o frango em uma frigideira quente.', 'Cozinhe os brócolis no vapor até ficarem al dente.', 'Sirva o frango com os brócolis ao lado.'] },
+            { title: 'Mousse de Abacate com Cacau', category: 'Doces Saudáveis', time: 10, calories: 200, img: 'https://i.postimg.cc/VNY2Dqrx/Mousse-de-Abacate-com-Cacau.webp', steps: ['Bata a polpa de um abacate maduro no liquidificador.', 'Adicione cacau em pó, mel ou outro adoçante a gosto.', 'Continue batendo até obter uma mistura homogênea.', 'Leve à geladeira por 30 minutos antes de servir.'] },
+            { title: 'Wrap de Alface com Atum', category: 'Lanches', time: 15, calories: 220, img: 'https://i.postimg.cc/2SdPQc6d/wrap-de-atum.jpg', steps: ['Lave e seque grandes folhas de alface romana.', 'Em uma tigela, misture atum em lata com iogurte grego, cenoura ralada e salsão.', 'Recheie as folhas de alface com a mistura de atum.', 'Enrole como um wrap e sirva imediatamente.'] },
+            { title: 'Salada de Quinoa Colorida', category: 'Saladas', time: 20, calories: 300, img: 'https://i.postimg.cc/bwK4f75j/Salada-de-Quinoa-Colorida.jpg', steps: ['Cozinhe a quinoa conforme as instruções da embalagem e deixe esfriar.', 'Pique pimentão vermelho, pepino, e cebola roxa.', 'Misture os vegetais picados com a quinoa cozida.', 'Tempere com suco de limão, azeite, sal e pimenta.'] },
+            { title: 'Panqueca de Banana e Aveia', category: 'Café da Manhã', time: 15, calories: 280, img: 'https://i.postimg.cc/cLKPjxXm/panqueca-de-banana.webp', steps: ['Amasse uma banana madura.', 'Misture com um ovo e duas colheres de sopa de aveia.', 'Aqueça uma frigideira antiaderente e despeje a massa.', 'Cozinhe dos dois lados e sirva com mel ou frutas.'] },
+            { title: 'Ovos Mexidos com Espinafre', category: 'Café da Manhã', time: 10, calories: 220, img: 'https://i.postimg.cc/JhZvrTwH/ovos-mexidos-com-espinafre.jpg', steps: ['Bata dois ovos em uma tigela.', 'Refogue um punhado de espinafre em uma frigideira.', 'Despeje os ovos sobre o espinafre e mexa até cozinhar.', 'Tempere com sal e pimenta a gosto.'] },
+            { title: 'Vitamina Verde Detox', category: 'Café da Manhã', time: 5, calories: 150, img: 'https://i.postimg.cc/02yTYdSh/Vitamina-Verde-Detox.jpg', steps: ['Bata no liquidificador uma folha de couve, suco de um limão, uma maçã e um copo de água.', 'Adicione gengibre a gosto.', 'Bata até ficar homogêneo e beba imediatamente.'] },
+            { title: 'Salmão Assado com Legumes', category: 'Prato Principal', time: 35, calories: 450, img: 'https://i.postimg.cc/RhMjbwD6/Salm-o-Assado-com-Legumes.jpg', steps: ['Tempere um filé de salmão com limão, sal e pimenta.', 'Corte brócolis, cenoura e abobrinha em pedaços.', 'Disponha o salmão e os legumes em uma assadeira.', 'Asse em forno pré-aquecido a 200°C por 20-25 minutos.'] },
+            { title: 'Escondidinho de Batata Doce', category: 'Prato Principal', time: 50, calories: 420, img: 'https://i.postimg.cc/hPZHpzbv/Escondidinho-de-Batata-Doce.jpg', steps: ['Cozinhe e amasse a batata doce para fazer um purê.', 'Refogue frango desfiado com tomate e cebola.', 'Em um refratório, coloque o frango e cubra com o purê.', 'Leve ao forno para gratinar.'] },
+            { title: 'Strogonoff Fit de Frango', category: 'Prato Principal', time: 30, calories: 380, img: 'https://i.postimg.cc/3r1M0bkg/Strogonoff-Fit-de-Frango.jpg', steps: ['Corte o frango em cubos e refogue.', 'Adicione cogumelos e um molho à base de iogurte natural ou creme de ricota.', 'Tempere com mostarda e ketchup (sem açúcar).', 'Sirva com arroz integral.'] },
+            { title: 'Chips de Batata Doce', category: 'Lanches', time: 25, calories: 180, img: 'https://i.postimg.cc/GtqZ09WM/Chips-de-Batata-Doce.jpg', steps: ['Fatie a batata doce em rodelas bem finas.', 'Tempere com azeite, sal e páprica.', 'Espalhe em uma assadeira sem sobrepor.', 'Asse em forno pré-aquecido a 200°C até ficarem crocantes.'] },
+            { title: 'Iogurte com Frutas Vermelhas', category: 'Lanches', time: 5, calories: 160, img: 'https://i.postimg.cc/85d2HZtg/Iogurte-com-Frutas-Vermelhas.webp', steps: ['Em uma tigela, coloque iogurte grego natural.', 'Adicione um mix de frutas vermelhas (morangos, mirtilos, framboesas).', 'Se desejar, adoce com um fio de mel.', 'Finalize com granola ou aveia.'] },
+            { title: 'Tabule de Quinoa', category: 'Saladas', time: 25, calories: 290, img: 'https://i.postimg.cc/QtrL12gq/Tabule-de-Quinoa.jpg', steps: ['Cozinhe a quinoa e deixe esfriar.', 'Pique tomate, pepino, cebola e muita salsinha e hortelã.', 'Misture tudo com a quinoa.', 'Tempere com limão, azeite e sal.'] },
+            { title: 'Creme de Abóbora com Gengibre', category: 'Sopas', time: 40, calories: 200, img: 'https://i.postimg.cc/DwKqV5cM/creme-de-abobora-com-gengibre-light-1300x1300-1.jpg', steps: ['Cozinhe a abóbora em pedaços até ficar bem macia.', 'Bata no liquidificador com um pouco da água do cozimento e gengibre ralado.', 'Volte para a panela para aquecer.', 'Tempere com sal e pimenta.'] },
+            { title: 'Sopa de Frango com Legumes', category: 'Sopas', time: 50, calories: 320, img: 'https://i.postimg.cc/jdfzkByf/sopa-defrango-com-legumes.jpg', steps: ['Cozinhe o frango e desfie.', 'Na mesma panela, refogue cebola, alho e adicione cenoura, batata e vagem picados.', 'Volte com o frango desfiado, cubra com água e cozinhe até os legumes ficarem macios.', 'Ajuste o sal e sirva.'] },
+            { title: 'Sorvete de Banana Congelada', category: 'Doces Saudáveis', time: 5, calories: 150, img: 'https://i.postimg.cc/wxZX29RH/sorvete-de-banana.jpg', steps: ['Congele bananas maduras em rodelas.', 'Bata as bananas congeladas em um processador de alimentos.', 'Continue batendo até obter uma consistência cremosa de sorvete.', 'Sirva imediatamente ou guarde no freezer.'] },
+            { title: 'Brownie Fit de Feijão Preto', category: 'Doces Saudáveis', time: 45, calories: 250, img: 'https://i.postimg.cc/1XkD3K14/brownie.jpg', steps: ['Bata no processador feijão preto cozido, cacau em pó, ovos, aveia e adoçante.', 'Despeje a massa em uma forma untada.', 'Asse em forno pré-aquecido a 180°C por cerca de 30 minutos.', 'Deixe esfriar antes de cortar.'] },
+            { title: 'Mix de Castanhas', category: 'Lanches', time: 2, calories: 250, img: 'https://i.postimg.cc/Gt8kR5NZ/Mix-de-Castanhas.jpg', steps: ['Separe um punhado (cerca de 30g) de suas castanhas preferidas.', 'Exemplos: castanha-do-pará, amêndoas, nozes.', 'Pode adicionar frutas secas como damasco ou uva passa.', 'Consuma como um lanche rápido e nutritivo.'] }
+        ],
+        leagueRanking: [
+            { rank: 1, name: 'Carlos', points: 21500, avatar: 'https://i.postimg.cc/dtbWS8XW/homi.jpg' },
+            { rank: 2, name: '@ana.fit', points: 14500, avatar: 'https://i.postimg.cc/Vk3cgrB1/mulher1.jpg' },
+            { rank: 3, name: 'Fernanda', points: 13200, avatar: 'https://i.postimg.cc/jSy8VDYR/mulher-OB.jpg' }
+        ],
+        quizQuestions: [
+            {
+                question: "Qual é o seu principal objetivo de fitness?",
+                key: "goal",
+                options: [
+                    { text: "Perder peso", value: "perda-peso" },
+                    { text: "Melhorar a flexibilidade", value: "flexibilidade" },
+                    { text: "Manter a saúde geral", value: "saude-geral" }
+                ]
+            },
+            {
+                question: "Qual seu nível de experiência com exercícios?",
+                key: "experience",
+                options: [
+                    { text: "Iniciante, começando agora", value: "beginner" },
+                    { text: "Intermediário, já treino um pouco", value: "intermediate" },
+                    { text: "Avançado, treino regularmente", value: "advanced" }
+                ]
+            },
+            {
+                question: "Como pretende treinar?",
+                key: "experience",
+                options: [
+                    { text: "Não tenho a mínima ideia", value: "beginner" },
+                    { text: "Vou começar de casa", value: "intermediate" },
+                    { text: "Tenho acesso a academia ", value: "advanced" }
+                ]
+            },
+            {
+                question: "Quanto tempo você tem para treinar por dia?",
+                key: "time",
+                options: [
+                    { text: "Até 20 minutos", value: "short" },
+                    { text: "De 20 a 40 minutos", value: "medium" },
+                    { text: "Mais de 40 minutos", value: "long" }
+                ]
+            }
+        ],
+        achievements: [
+            { title: "Maratonista", description: "Complete 50 treinos", icon: "fa-person-running", condition: (p) => p.totalWorkouts >= 50 },
+            { title: "Fogo Eterno", description: "Mantenha uma ofensiva de 30 dias", icon: "fa-fire", condition: (p) => p.streak >= 30 },
+            { title: "Semana Perfeita", description: "Mantenha uma ofensiva de 7 dias", icon: "fa-calendar-check", condition: (p) => p.streak >= 7 },
+            { title: "Novato de Elite", description: "Complete seu primeiro treino", icon: "fa-star", condition: (p) => p.totalWorkouts >= 1 },
+            { title: "Mestre Cuca", description: "Visualize 10 receitas", icon: "fa-utensils", condition: (p) => p.recipesViewed >= 10 },
+            { title: "Socialite", description: "Envie 5 mensagens no chat", icon: "fa-comments", condition: (p) => p.chatMessagesSent >= 5 },
+            { title: "Milionário", description: "Acumule 100.000 pontos", icon: "fa-gem", condition: (p) => p.healthPoints >= 100000 },
+            { title: "Lenda da Liga", description: "Chegue ao topo do ranking", icon: "fa-shield-alt", condition: (p) => db.leagueRanking.find(u => u.name === p.username)?.rank === 1 },
+        ],
+        tutorialSteps: [
+            {
+                title: "Bem-vindo(a) ao FitLingo!",
+                text: "Este é um rápido tutorial para você conhecer as principais funções. Vamos começar!",
+                highlight: 'body',
+                position: 'center'
+            },
+            {
+                title: "Sua Missão do Dia",
+                text: "Esta é a tela de Início. Aqui fica sua trilha de treinos diários. Clique no exercício que está pulsando para começar.",
+                highlight: '.module-item',
+                position: 'bottom',
+                tab: 'home'
+            },
+             {
+                title: "Nutrição Saudável",
+                text: "Nesta aba você encontra receitas deliciosas e saudáveis para complementar seus treinos.",
+                highlight: '[data-tab="nutrition"]',
+                position: 'top',
+                tab: 'nutrition'
+            },
+            {
+                title: "Ligas e Comunidade",
+                text: "Aqui você pode ver seu ranking e conversar com outros usuários para se manter motivado.",
+                highlight: '[data-tab="leagues"]',
+                position: 'top',
+                tab: 'leagues'
+            },
+            {
+                title: "Seu Perfil",
+                text: "Acompanhe seu progresso, veja suas conquistas e ajuste as configurações do app nesta aba.",
+                highlight: '[data-tab="profile"]',
+                position: 'top',
+                tab: 'profile'
+            },
+            {
+                title: "Tudo Pronto!",
+                text: "Agora você já conhece o básico. Explore o app e comece sua jornada fitness!",
+                highlight: 'body',
+                position: 'center'
+            }
+        ]
+    };
+
+    // UTILITIES
+    const get = (id) => document.getElementById(id);
+
+    // RENDERERS
+    const renderers = {
+        home() {
+            const container = get('page-home');
+            const trailHTML = state.trail.map((module, index) => {
+                let iconClass, colorClass, animationClass = '', isClickable = false;
+                if (module.status === 'completed') {
+                    iconClass = 'fa-check';
+                    colorClass = 'bg-emerald-500 text-white';
+                } else if (module.status === 'current') {
+                    iconClass = `fa-solid ${module.icon}`;
+                    colorClass = 'bg-blue-500 text-white cursor-pointer';
+                    animationClass = 'pulse-animation';
+                    isClickable = true;
+                } else {
+                    iconClass = 'fa-lock';
+                    colorClass = 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 opacity-60 shadow-inner';
+                }
+                return `
+                <div class="flex flex-col items-center module-item w-full ${isClickable ? 'cursor-pointer' : ''}" ${isClickable ? `data-workout-index="${index}"` : ''}>
+                    <div class="w-24 h-24 ${colorClass} rounded-full flex items-center justify-center text-4xl shadow-lg ${animationClass} transition-transform transform hover:scale-105">
+                        <i class="fas ${iconClass}"></i>
+                    </div>
+                    <div class="text-center mt-2 px-4">
+                        <p class="font-bold text-gray-700 dark:text-gray-300" data-translatable>${module.title}</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 font-semibold" data-translatable>${module.duration}</p>
+                        <p class="text-sm text-blue-600 dark:text-blue-400 font-semibold mt-1" data-translatable>${module.description}</p>
+                    </div>
+                </div>`;
+            }).join('');
+            
+            container.innerHTML = `
+                <div class="p-4 text-center">
+                    <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200" data-translatable>Sua Missão do Dia</h2>
+                    <p class="text-gray-500 dark:text-gray-400" data-translatable>Complete os treinos para avançar!</p>
+                </div>
+                <div class="p-6 pt-2 relative">
+                    <div class="trail-path"></div>
+                    <div class="space-y-16 flex flex-col items-center">${trailHTML}</div>
+                </div>
+            `;
+        },
+        nutrition() {
+            const container = get('page-nutrition');
+            const categories = ['Todos', ...new Set(db.recipes.map(r => r.category))];
+            const filtersHTML = categories.map(cat => `<button class="nutrition-filter-btn px-4 py-2 rounded-full text-sm font-bold transition whitespace-nowrap ${state.activeNutritionFilter === cat ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200'}" data-category="${cat}" data-translatable>${cat}</button>`).join('');
+            const filteredRecipes = db.recipes.filter(r => (state.activeNutritionFilter === 'Todos' || r.category === state.activeNutritionFilter) && r.title.toLowerCase().includes(state.nutritionSearchTerm.toLowerCase()));
+            const recipesHTML = filteredRecipes.length ? filteredRecipes.map(recipe => `
+                <div class="bg-white dark:bg-gray-700 rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-transform cursor-pointer" data-recipe-title="${recipe.title}">
+                    <img src="${recipe.img}" alt="${recipe.title}" class="w-full h-32 object-cover pointer-events-none">
+                    <div class="p-4 pointer-events-none">
+                        <h3 class="font-bold text-md text-gray-800 dark:text-gray-200" data-translatable>${recipe.title}</h3>
+                        <div class="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400 mt-2">
+                            <span class="flex items-center" data-translatable><i class="far fa-clock mr-1"></i>${recipe.time} min</span>
+                            <span class="flex items-center" data-translatable><i class="fas fa-fire-alt mr-1"></i>${recipe.calories} kcal</span>
+                        </div>
+                    </div>
+                </div>`).join('') : `<p class="col-span-2 text-center text-gray-500 dark:text-gray-400 mt-8" data-translatable>Nenhuma receita encontrada.</p>`;
+            container.innerHTML = `
+                <div class="p-4">
+                    <div class="relative mb-4"><input type="text" id="recipe-search" placeholder="Buscar por receita..." value="${state.nutritionSearchTerm}" class="w-full pl-10 pr-4 py-3 bg-gray-100 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded-full border-2 border-transparent focus:border-emerald-500 focus:outline-none"><i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i></div>
+                    <div class="flex space-x-2 overflow-x-auto pb-2 -mx-4 px-4 mb-4">${filtersHTML}</div>
+                    <div class="grid grid-cols-2 gap-4">${recipesHTML}</div>
+                </div>`;
+        },
+        leagues() {
+            const container = get('page-leagues');
+            const rankingHTML = db.leagueRanking.map(user => `<div class="flex items-center p-3 rounded-lg ${user.name === state.profile.username ? 'bg-blue-100 dark:bg-blue-900/50 border-2 border-blue-400 dark:border-blue-500' : 'bg-gray-100 dark:bg-gray-700'}"><span class="font-bold text-gray-500 dark:text-gray-400 w-8">${user.rank}.</span><img src="${user.avatar}" class="w-10 h-10 rounded-full mr-3"><div class="flex-grow"><p class="font-bold text-gray-800 dark:text-gray-200" data-translatable>${user.name}</p><p class="text-sm text-gray-500 dark:text-gray-400" data-translatable>${user.points.toLocaleString()} Pontos</p></div>${user.name === state.profile.username ? '<span class="text-xs font-bold text-blue-600 dark:text-blue-400" data-translatable>VOCÊ</span>' : ''}</div>`).join('');
+            const communityHTML = state.communityChat.map(chat => `
+                <div class="flex items-start space-x-3 ${chat.isUser ? 'justify-end' : ''}">
+                    ${!chat.isUser ? `<img src="${chat.avatar}" class="w-10 h-10 rounded-full mt-1">` : ''}
+                    <div>
+                        <p class="font-bold text-sm text-gray-800 dark:text-gray-200 ${chat.isUser ? 'text-right' : ''}" data-translatable>${chat.name}</p>
+                        <div class="${chat.isUser ? 'bg-blue-500 text-white rounded-tr-none' : 'bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200 rounded-tl-none'} p-3 rounded-lg max-w-xs"><p data-translatable>${chat.msg}</p></div>
+                    </div>
+                    ${chat.isUser ? `<img src="" class="w-10 h-10 rounded-full mt-1">` : ''}
+                </div>`).join('');
+            container.innerHTML = `
+                <div>
+                    <div class="flex border-b dark:border-gray-700"><button data-league-tab="ranking" class="league-tab-btn w-1/2 py-3 font-bold ${state.activeLeagueTab === 'ranking' ? 'text-blue-600 border-b-4 border-blue-600' : 'text-gray-500 dark:text-gray-400'}" data-translatable>Ranking</button><button data-league-tab="community" class="league-tab-btn w-1/2 py-3 font-bold ${state.activeLeagueTab === 'community' ? 'text-blue-600 border-b-4 border-blue-600' : 'text-gray-500 dark:text-gray-400'}" data-translatable>Comunidade</button></div>
+                    <div id="league-ranking-view" class="${state.activeLeagueTab === 'ranking' ? 'p-4 space-y-3' : 'hidden'}">${rankingHTML}</div>
+                    <div id="league-community-view" class="flex flex-col ${state.activeLeagueTab === 'community' ? '' : 'hidden'}" style="height: calc(100vh - 250px);"><div id="chat-messages" class="flex-grow p-4 space-y-4 overflow-y-auto">${communityHTML}</div><div class="p-2 bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex items-center"><input type="text" id="chat-input" placeholder="Digite sua mensagem..." class="w-full bg-gray-100 dark:bg-gray-600 dark:text-white rounded-full py-2 px-4 focus:outline-none"><button id="send-chat-btn" class="ml-2 text-blue-500 text-2xl flex-shrink-0 w-10 h-10 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50 flex items-center justify-center"><i class="fas fa-paper-plane"></i></button></div></div>
+                </div>`;
+        },
+        profile() {
+            const container = get('page-profile');
+            let contentHTML = '';
+
+            const header = (title) => `
+                <div class="p-4 flex items-center border-b dark:border-gray-700">
+                    <button data-action="profile-back" class="text-blue-500 text-xl"><i class="fas fa-chevron-left pointer-events-none"></i></button>
+                    <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 text-center flex-grow" data-translatable>${title}</h2>
+                    <div class="w-6"></div>
+                </div>`;
+
+            if (state.activeProfilePage === 'main') {
+                const p = state.profile;
+                let level, levelColor;
+                if (p.healthPoints < 40000) { level = 'Bronze'; levelColor = 'text-yellow-600 bg-yellow-200 border-yellow-500'; }
+                else if (p.healthPoints < 120000) { level = 'Prata'; levelColor = 'text-gray-600 bg-gray-200 border-gray-400'; }
+                else if (p.healthPoints < 160000) { level = 'Ouro'; levelColor = 'text-amber-600 bg-amber-200 border-amber-500'; }
+                else { level = 'Extraordinário'; levelColor = 'text-purple-600 bg-purple-200 border-purple-500 animate-pulse'; }
+                contentHTML = `
+                    <div class="p-6">
+                        <div class="flex flex-col items-center text-center"><div class="relative"><img src="https://placehold.co/100x100/3b82f6/ffffff?text=A" class="w-24 h-24 rounded-full mb-4 border-4 border-white dark:border-gray-800 shadow-lg"><div class="absolute -bottom-2 right-0 px-2 py-1 rounded-md text-xs font-bold border-2 ${levelColor}" data-translatable>${level}</div></div><h2 class="text-2xl font-black text-gray-800 dark:text-gray-200" data-translatable>${p.username}</h2></div>
+                        <div class="grid grid-cols-3 gap-4 my-8 text-center"><div><p class="text-3xl font-black text-orange-500">${p.streak}</p><p class="text-sm text-gray-500 dark:text-gray-400 font-bold" data-translatable>Ofensiva</p></div><div><p class="text-3xl font-black text-emerald-500">${p.totalWorkouts}</p><p class="text-sm text-gray-500 dark:text-gray-400 font-bold" data-translatable>Treinos</p></div><div><p class="text-3xl font-black text-blue-500">${Math.floor(p.healthPoints/1000)}k</p><p class="text-sm text-gray-500 dark:text-gray-400 font-bold" data-translatable>Pontos</p></div></div>
+                        <div class="space-y-3">
+                            <button data-action="profile-nav" data-page="settings" class="w-full flex items-center p-4 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-200 font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"><i class="fas fa-cog w-6 mr-3"></i><span data-translatable>Configurações</span></button>
+                            <button data-action="profile-nav" data-page="achievements" class="w-full flex items-center p-4 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-200 font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"><i class="fas fa-trophy w-6 mr-3"></i><span data-translatable>Conquistas</span></button>
+                            <button data-action="profile-nav" data-page="tutorial" class="w-full flex items-center p-4 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-200 font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"><i class="fas fa-question-circle w-6 mr-3"></i><span data-translatable>Tutorial para Iniciantes</span></button>
+                            <button data-action="profile-nav" data-page="guidelines" class="w-full flex items-center p-4 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-200 font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"><i class="fas fa-book w-6 mr-3"></i><span data-translatable>Diretrizes</span></button>
+                            <button class="w-full flex items-center p-4 bg-gray-100 dark:bg-gray-700 rounded-lg text-red-500 font-bold hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"><i class="fas fa-sign-out-alt w-6 mr-3"></i><span data-translatable>Sair</span></button>
+                        </div>
+                    </div>`;
+            } else if (state.activeProfilePage === 'achievements') {
+                const achievementsHTML = db.achievements.map(ach => {
+                    const isUnlocked = ach.condition(state.profile);
+                    return `
+                        <div class="flex items-center p-4 rounded-lg ${isUnlocked ? 'bg-amber-100 dark:bg-amber-900/50' : 'bg-gray-100 dark:bg-gray-700 opacity-60'}">
+                            <div class="w-16 h-16 rounded-full flex items-center justify-center text-3xl ${isUnlocked ? 'bg-amber-400 text-white' : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400'}">
+                                <i class="fas ${ach.icon}"></i>
+                            </div>
+                            <div class="ml-4 flex-grow">
+                                <h3 class="font-bold text-gray-800 dark:text-gray-200" data-translatable>${ach.title}</h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-400" data-translatable>${ach.description}</p>
+                            </div>
+                        </div>`;
+                }).join('');
+                contentHTML = `${header('Conquistas')}<div class="p-4 space-y-3">${achievementsHTML}</div>`;
+            } else if (state.activeProfilePage === 'settings') {
+                const lightBtnClass = !state.isDarkMode ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300';
+                const darkBtnClass = state.isDarkMode ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300';
+                contentHTML = `
+                    ${header('Configurações')}
+                    <div class="p-4 space-y-6">
+                        <div>
+                            <h3 class="font-bold text-gray-800 dark:text-gray-200 mb-2" data-translatable>Layout do App</h3>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button data-action="set-theme" data-theme="light" class="p-3 rounded-lg font-semibold flex items-center justify-center transition-colors ${lightBtnClass}">
+                                    <i class="fas fa-sun mr-2"></i><span data-translatable>Claro</span>
+                                </button>
+                                <button data-action="set-theme" data-theme="dark" class="p-3 rounded-lg font-semibold flex items-center justify-center transition-colors ${darkBtnClass}">
+                                    <i class="fas fa-moon mr-2"></i><span data-translatable>Escuro</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="font-bold text-gray-800 dark:text-gray-200" data-translatable>Sons do App</h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400" data-translatable>Efeitos sonoros de motivação.</p>
+                            </div>
+                            <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" name="toggle" id="toggle-sounds" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer" ${state.settings.sounds ? 'checked' : ''}/>
+                                <label for="toggle-sounds" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                            </div>
+                        </div>
+                         <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="font-bold text-gray-800 dark:text-gray-200" data-translatable>Notificações de Lembrete</h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400" data-translatable>Lembretes para não perder sua ofensiva.</p>
+                            </div>
+                            <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" name="toggle" id="toggle-reminders" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer" ${state.settings.reminders ? 'checked' : ''}/>
+                                <label for="toggle-reminders" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                            </div>
+                        </div>
+                    </div>`;
+            } else if (state.activeProfilePage === 'tutorial') {
+                 contentHTML = `
+                    ${header('Tutorial para Iniciantes')}
+                    <div class="p-6 space-y-4 text-gray-700 dark:text-gray-300">
+                        <div>
+                            <h3 class="font-bold text-lg mb-2" data-translatable><i class="fas fa-dumbbell mr-2 text-blue-500"></i>Aba Início</h3>
+                            <p class="text-sm" data-translatable>Esta é sua tela principal. Aqui você encontra sua "Missão do Dia". Clique no exercício que está pulsando para começar a treinar.</p>
+                        </div>
+                         <div>
+                            <h3 class="font-bold text-lg mb-2" data-translatable><i class="fas fa-utensils mr-2 text-emerald-500"></i>Aba Nutrição</h3>
+                            <p class="text-sm" data-translatable>Explore dezenas de receitas saudáveis. Você pode usar os filtros ou a busca para encontrar o prato perfeito. Clique em uma receita para ver o passo a passo.</p>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg mb-2" data-translatable><i class="fas fa-shield-alt mr-2 text-red-500"></i>Aba Ligas</h3>
+                            <p class="text-sm" data-translatable>Veja sua posição no ranking e interaja com outros usuários na comunidade. Envie mensagens e motive seus amigos!</p>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg mb-2" data-translatable><i class="fas fa-user mr-2 text-orange-500"></i>Aba Perfil</h3>
+                            <p class="text-sm" data-translatable>Acompanhe suas estatísticas, veja suas conquistas e configure o aplicativo do seu jeito, incluindo o tema claro ou escuro.</p>
+                        </div>
+                    </div>`;
+            }
+            else if (state.activeProfilePage === 'guidelines') {
+                contentHTML = `
+                    ${header('Diretrizes')}
+                    <div class="p-6 space-y-4 text-gray-700 dark:text-gray-300">
+                        <div>
+                            <h3 class="font-bold text-lg mb-2" data-translatable>Respeito na Comunidade</h3>
+                            <p class="text-sm" data-translatable>Mantenha um ambiente positivo e encorajador. Não toleramos bullying, assédio ou discurso de ódio. Seja gentil e apoie os outros em suas jornadas.</p>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg mb-2" data-translatable>Segurança em Primeiro Lugar</h3>
+                            <p class="text-sm" data-translatable>Consulte um médico antes de iniciar qualquer novo programa de exercícios. Ouça seu corpo e não exceda seus limites. Os exercícios e receitas são sugestões e devem ser adaptados à sua condição.</p>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg mb-2" data-translatable>Uso da Conta</h3>
+                            <p class="text-sm" data-translatable>Sua conta é pessoal e intransferível. Não compartilhe suas informações de login. Você é responsável por toda a atividade que ocorre em sua conta.</p>
+                        </div>
+                    </div>`;
+            }
+            container.innerHTML = contentHTML;
+        },
+        updateNav() {
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                const tab = btn.dataset.tab;
+                btn.classList.toggle('text-blue-500', tab === state.activeTab);
+                btn.classList.toggle('text-gray-400', tab !== state.activeTab);
+                btn.classList.toggle('dark:text-gray-500', tab !== state.activeTab);
+                btn.disabled = !state.isQuizCompleted;
+                btn.classList.toggle('opacity-50', !state.isQuizCompleted);
+            });
+            get('nav-bar').querySelector('[data-tab="home"]').disabled = false;
+            get('nav-bar').querySelector('[data-tab="home"]').classList.remove('opacity-50');
+        },
+        updateHeader() {
+            get('streak-counter').textContent = state.isQuizCompleted ? state.profile.streak : 0;
+        },
+        quiz() {
+            const modal = get('quiz-modal');
+            const q = db.quizQuestions[state.quiz.currentQuestion];
+            if (!q) return;
+
+            const progress = ((state.quiz.currentQuestion + 1) / db.quizQuestions.length) * 100;
+            const optionsHTML = q.options.map(opt => 
+                `<button data-action="quiz-answer" data-key="${q.key}" data-value="${opt.value}" class="w-full text-left p-4 border-2 dark:border-gray-600 rounded-lg font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-blue-500 transition-colors">
+                    ${opt.text}
+                </button>`
+            ).join('');
+
+            modal.innerHTML = `
+                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-6">
+                    <div class="bg-blue-600 h-2.5 rounded-full" style="width: ${progress}%"></div>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-6" data-translatable>${q.question}</h2>
+                <div class="space-y-3">${optionsHTML}</div>
+            `;
+            modal.classList.remove('hidden');
+        },
+        tutorial() {
+            const overlay = get('tutorial-overlay');
+            document.querySelectorAll('.highlight-tutorial').forEach(el => el.classList.remove('highlight-tutorial'));
+
+            if (!state.showTutorial || state.tutorialStep >= db.tutorialSteps.length) {
+                overlay.innerHTML = '';
+                overlay.classList.add('hidden');
+                return;
+            }
+
+            const step = db.tutorialSteps[state.tutorialStep];
+            const targetElement = document.querySelector(step.highlight);
+            
+            overlay.innerHTML = ''; // Clear previous tooltip
+            if (targetElement) {
+                const appContainer = document.querySelector('.app-container');
+                if (!appContainer) return; 
+
+                targetElement.classList.add('highlight-tutorial');
+                const rect = targetElement.getBoundingClientRect();
+                const appRect = appContainer.getBoundingClientRect();
+                
+                const tooltip = document.createElement('div');
+                tooltip.className = 'tutorial-tooltip fade-in';
+                
+                const isLastStep = state.tutorialStep === db.tutorialSteps.length - 1;
+                tooltip.innerHTML = `
+                    <h3 class="font-bold text-lg mb-2" data-translatable>${step.title}</h3>
+                    <p class="text-sm mb-4" data-translatable>${step.text}</p>
+                    <button data-action="tutorial-next" class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded-lg">
+                        ${isLastStep ? 'Concluir' : 'Próximo'}
+                    </button>
+                `;
+                
+                overlay.appendChild(tooltip);
+                
+                let top = 0, left = 0;
+                const offset = 10;
+
+                if(step.position === 'bottom') {
+                    top = rect.bottom - appRect.top + offset;
+                    left = rect.left - appRect.left + (rect.width / 2) - (tooltip.offsetWidth / 2);
+                } else if(step.position === 'top') {
+                    top = rect.top - appRect.top - tooltip.offsetHeight - offset;
+                    left = rect.left - appRect.left + (rect.width / 2) - (tooltip.offsetWidth / 2);
+                } else if (step.position === 'center') {
+                    top = (appRect.height / 2) - (tooltip.offsetHeight / 2);
+                    left = (appRect.width / 2) - (tooltip.offsetWidth / 2);
+                }
+
+                tooltip.style.top = `${Math.max(10, Math.min(top, appRect.height - tooltip.offsetHeight - 10))}px`;
+                tooltip.style.left = `${Math.max(10, Math.min(left, appRect.width - tooltip.offsetWidth - 10))}px`;
+            }
+
+            overlay.classList.remove('hidden');
+        }
+    };
+
+    // MAIN RENDER FUNCTION
+    function render() {
+        document.documentElement.classList.toggle('dark', state.isDarkMode);
+        
+        renderers.updateHeader();
+        renderers.updateNav();
+        get('locked-overlay').classList.toggle('hidden', state.isQuizCompleted);
+        
+        const accessibilityBtn = get('accessibility-btn');
+        accessibilityBtn.classList.toggle('hidden', !state.isQuizCompleted);
+        accessibilityBtn.classList.toggle('pulse-animation', state.isAccessibilityModeActive);
+        accessibilityBtn.classList.toggle('bg-green-500', state.isAccessibilityModeActive);
+
+
+        document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+
+        if (state.isQuizCompleted) {
+            const activePage = get(`page-${state.activeTab}`);
+            if (activePage) {
+                activePage.classList.remove('hidden');
+                activePage.classList.add('fade-in');
+                if (renderers[state.activeTab]) {
+                    renderers[state.activeTab]();
+                }
+            }
+        } else {
+             get('page-home').classList.remove('hidden');
+        }
+        
+        setTimeout(() => renderers.tutorial(), 50);
+    }
+
+    // EVENT LISTENERS SETUP
+    function setupEventListeners() {
+        get('nav-bar').addEventListener('click', e => {
+            const navBtn = e.target.closest('.nav-btn');
+            if (navBtn && !navBtn.disabled) {
+                state.activeTab = navBtn.dataset.tab;
+                state.activeProfilePage = 'main';
+                render();
+            }
+        });
+
+        get('start-quiz-btn').addEventListener('click', () => {
+            state.quiz.currentQuestion = 0;
+            state.quiz.answers = {};
+            renderers.quiz();
+        });
+        
+        document.querySelector('.app-container').addEventListener('mouseover', e => {
+            if (state.isAccessibilityModeActive) {
+                const translatableEl = e.target.closest('[data-translatable]');
+                if (translatableEl) {
+                    handleAccessibilityTranslate(translatableEl.innerText);
+                }
+            }
+        });
+
+        document.querySelector('.app-container').addEventListener('mouseout', e => {
+            if (state.isAccessibilityModeActive) {
+                const translatableEl = e.target.closest('[data-translatable]');
+                if (translatableEl) {
+                    handleAccessibilityHide();
+                }
+            }
+        });
+
+
+        get('page-container').addEventListener('click', e => {
+            const workoutModule = e.target.closest('[data-workout-index]');
+            if (workoutModule) {
+                handleWorkoutStart(parseInt(workoutModule.dataset.workoutIndex));
+                return;
+            }
+
+            const recipeCard = e.target.closest('[data-recipe-title]');
+            if (recipeCard) {
+                handleShowRecipe(recipeCard.dataset.recipeTitle);
+                return;
+            }
+            
+            const button = e.target.closest('button');
+            if (!button) return;
+
+            const { action, page, leagueTab, category, theme } = button.dataset;
+
+            if (action === 'profile-nav') {
+                state.activeProfilePage = page;
+                if (page === 'tutorial') {
+                    handleStartBeginnerTutorial();
+                } else {
+                    renderers.profile();
+                }
+            } else if (action === 'profile-back') {
+                state.activeProfilePage = 'main';
+                renderers.profile();
+            } else if (action === 'set-theme') {
+                handleSetTheme(theme);
+            } else if (leagueTab) {
+                state.activeLeagueTab = leagueTab;
+                renderers.leagues();
+            } else if (category) {
+                state.activeNutritionFilter = category;
+                renderers.nutrition();
+            } else if (button.id === 'send-chat-btn') {
+                handleSendChat();
+            }
+        });
+
+        get('page-container').addEventListener('change', e => {
+            if (e.target.id === 'toggle-sounds') {
+                state.settings.sounds = e.target.checked;
+            }
+            if (e.target.id === 'toggle-reminders') {
+                state.settings.reminders = e.target.checked;
+            }
+        });
+
+        get('page-container').addEventListener('input', e => {
+            if (e.target.id === 'recipe-search') {
+                state.nutritionSearchTerm = e.target.value;
+                renderers.nutrition();
+            }
+        });
+
+        get('page-container').addEventListener('keypress', e => {
+            if (e.target.id === 'chat-input' && e.key === 'Enter') handleSendChat();
+        });
+        
+        get('quiz-modal').addEventListener('click', e => {
+            const button = e.target.closest('button[data-action="quiz-answer"]');
+            if (button) {
+                const { key, value } = button.dataset;
+                handleQuizAnswer(key, value);
+            }
+        });
+        
+        get('workout-modal').addEventListener('click', e => {
+            if (e.target.id === 'complete-workout-btn') handleWorkoutComplete();
+        });
+        
+        get('recipe-modal').addEventListener('click', e => {
+            if (e.target.id === 'close-recipe-modal-btn') get('recipe-modal').classList.add('hidden');
+        });
+
+        get('tutorial-overlay').addEventListener('click', e => {
+            if (e.target.dataset.action === 'tutorial-next') {
+                handleTutorialNext();
+            }
+        });
+        
+        get('accessibility-btn').addEventListener('click', handleAccessibilityToggle);
+    }
+
+    // HANDLERS
+    function handleSetTheme(theme) {
+        state.isDarkMode = theme === 'dark';
+        render();
+    }
+
+    function handleStartBeginnerTutorial() {
+        state.activeTab = 'home';
+        state.showTutorial = true;
+        state.tutorialStep = 0;
+        render();
+    }
+
+    function handleTutorialNext() {
+        state.tutorialStep++;
+        const nextStep = db.tutorialSteps[state.tutorialStep];
+
+        if (!nextStep) {
+            state.showTutorial = false;
+            render();
+            return;
+        }
+        
+        if(nextStep.tab && state.activeTab !== nextStep.tab) {
+            state.activeTab = nextStep.tab;
+        }
+
+        render();
+    }
+
+    function handleQuizAnswer(key, value) {
+        state.quiz.answers[key] = value;
+        if (state.quiz.currentQuestion < db.quizQuestions.length - 1) {
+            state.quiz.currentQuestion++;
+            renderers.quiz();
+        } else {
+            handleFinishQuiz();
+        }
+    }
+
+    function handleFinishQuiz() {
+        state.userGoal = state.quiz.answers.goal || 'saude-geral';
+        state.trail = db.trails[state.userGoal].map((t, i) => ({ ...t, status: i === 0 ? 'current' : 'locked' }));
+        state.isQuizCompleted = true;
+        state.activeTab = 'home';
+        get('quiz-modal').classList.add('hidden');
+        
+        state.showTutorial = true;
+        state.tutorialStep = 0;
+        render();
+    }
+
+    function handleShowRecipe(title) {
+        const recipe = db.recipes.find(r => r.title === title);
+        if (!recipe) return;
+        state.profile.recipesViewed++;
+        const modal = get('recipe-modal');
+        modal.innerHTML = `
+            <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-sm fade-in relative max-h-[90vh] flex flex-col">
+                <button id="close-recipe-modal-btn" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-2xl w-8 h-8 z-10">&times;</button>
+                <img src="${recipe.img}" alt="Foto de ${recipe.title}" class="w-full h-40 object-cover rounded-lg mb-4 flex-shrink-0">
+                <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2 flex-shrink-0" data-translatable>${recipe.title}</h3>
+                <div class="overflow-y-auto">
+                    <h4 class="font-bold text-lg text-gray-700 dark:text-gray-300 mt-2 mb-2" data-translatable>Modo de Preparo</h4>
+                    <ul class="space-y-3 text-gray-600 dark:text-gray-400 list-none text-sm">
+                        ${recipe.steps.map((step, index) => `<li class="flex items-start" data-translatable><span class="font-bold text-blue-500 mr-3">${index + 1}.</span><span>${step}</span></li>`).join('')}
+                    </ul>
+                </div>
+            </div>`;
+        modal.classList.remove('hidden');
+    }
+
+    function handleWorkoutStart(index) {
+        const workout = state.trail[index];
+        const modal = get('workout-modal');
+        modal.innerHTML = `
+            <div class="bg-white dark:bg-gray-800 rounded-2xl p-8 text-center w-full max-w-xs fade-in">
+                <i class="fas ${workout.icon} text-5xl mb-4 text-blue-500"></i>
+                <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2" data-translatable>${workout.title}</h3>
+                <p class="text-gray-600 dark:text-gray-400 mb-6" data-translatable>Complete seu treino para manter a ofensiva!</p>
+                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-6">
+                    <div id="workout-progress" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+                <button id="complete-workout-btn" class="w-full bg-blue-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:bg-blue-600 transition-transform transform hover:scale-105 active:scale-100 disabled:opacity-50" disabled data-translatable>
+                    Concluir
+                </button>
+            </div>`;
+        modal.classList.remove('hidden');
+        
+        const progressBar = get('workout-progress');
+        const completeBtn = get('complete-workout-btn');
+        let width = 0;
+        const interval = setInterval(() => {
+            if (width >= 100) {
+                clearInterval(interval);
+                completeBtn.disabled = false;
+            } else {
+                width++;
+                progressBar.style.width = width + '%';
+            }
+        }, 20);
+    }
+
+    function handleWorkoutComplete() {
+        const currentIndex = state.trail.findIndex(w => w.status === 'current');
+        if (currentIndex !== -1) {
+            state.trail[currentIndex].status = 'completed';
+            if (currentIndex + 1 < state.trail.length) {
+                state.trail[currentIndex + 1].status = 'current';
+            }
+            state.profile.streak++;
+            state.profile.totalWorkouts++;
+            state.profile.healthPoints += Math.floor(Math.random() * 500) + 250;
+        }
+        get('workout-modal').classList.add('hidden');
+        render();
+    }
+
+    function handleSendChat() {
+        const input = get('chat-input');
+        if (input && input.value.trim() !== '') {
+            state.communityChat.push({ name: state.profile.username, msg: input.value.trim(), avatar: 'https://placehold.co/40x40/3b82f6/ffffff?text=A', isUser: true });
+            state.profile.chatMessagesSent++;
+            input.value = '';
+            renderers.leagues();
+            const chatMessages = get('chat-messages');
+            if(chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    }
+
+    function handleAccessibilityToggle() {
+        state.isAccessibilityModeActive = !state.isAccessibilityModeActive;
+        if (!state.isAccessibilityModeActive) {
+            handleAccessibilityHide(); // Hide modal when disabling
+        }
+        render();
+    }
+
+    function handleAccessibilityTranslate(text) {
+        const modal = get('accessibility-modal');
+        get('accessibility-caption').textContent = text;
+        modal.classList.remove('hidden');
+
+        // Text-to-speech
+        speechSynthesis.cancel(); // Cancel any previous speech
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'pt-BR';
+        speechSynthesis.speak(utterance);
+    }
+    
+    function handleAccessibilityHide() {
+        get('accessibility-modal').classList.add('hidden');
+        speechSynthesis.cancel();
+    }
+
+    // INITIALIZATION
+    setupEventListeners();
+    render();
+});
+</script>
+
+</body>
+</html>
